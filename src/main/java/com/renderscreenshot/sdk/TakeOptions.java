@@ -721,19 +721,16 @@ public final class TakeOptions {
             // Viewport options
             if (key.equals("width") || key.equals("height") || key.equals("scale") || key.equals("mobile")) {
                 viewport.put(key, value);
-            }
-            // PDF options
-            else if (key.startsWith("pdf_")) {
+            } else if (key.startsWith("pdf_")) {
+                // PDF options
                 String pdfKey = key.substring(4); // Remove "pdf_" prefix
                 pdf.put(pdfKey, value);
-            }
-            // Storage options
-            else if (key.startsWith("storage_")) {
+            } else if (key.startsWith("storage_")) {
+                // Storage options
                 String storageKey = key.substring(8); // Remove "storage_" prefix
                 storage.put(storageKey, value);
-            }
-            // Top-level options
-            else {
+            } else {
+                // Top-level options
                 params.put(key, value);
             }
         }
