@@ -3,6 +3,7 @@
 Official Java SDK for the [RenderScreenshot](https://renderscreenshot.com) API â€” capture web page screenshots programmatically.
 
 [![CI](https://github.com/render-screenshot/rs-java/actions/workflows/ci.yml/badge.svg)](https://github.com/render-screenshot/rs-java/actions/workflows/ci.yml)
+[![JitPack](https://jitpack.io/v/Render-Screenshot/rs-java.svg)](https://jitpack.io/#Render-Screenshot/rs-java)
 [![Java](https://img.shields.io/badge/Java-11%2B-blue)](https://www.oracle.com/java/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -10,18 +11,41 @@ Official Java SDK for the [RenderScreenshot](https://renderscreenshot.com) API â
 
 ### Maven
 
+Add the JitPack repository:
+
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+```
+
+Add the dependency:
+
 ```xml
 <dependency>
-    <groupId>com.renderscreenshot</groupId>
-    <artifactId>sdk</artifactId>
-    <version>1.0.0</version>
+    <groupId>com.github.Render-Screenshot</groupId>
+    <artifactId>rs-java</artifactId>
+    <version>v1.0.0</version>
 </dependency>
 ```
 
 ### Gradle
 
+Add the JitPack repository:
+
 ```groovy
-implementation 'com.renderscreenshot:sdk:1.0.0'
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+```
+
+Add the dependency:
+
+```groovy
+implementation 'com.github.Render-Screenshot:rs-java:v1.0.0'
 ```
 
 ## Requirements
