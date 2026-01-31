@@ -22,8 +22,8 @@ import java.util.Map;
  * <pre>{@code
  * // In your webhook handler
  * String payload = request.getBody();
- * String signature = request.getHeader("X-RenderScreenshot-Signature");
- * String timestamp = request.getHeader("X-RenderScreenshot-Timestamp");
+ * String signature = request.getHeader("X-Webhook-Signature");
+ * String timestamp = request.getHeader("X-Webhook-Timestamp");
  *
  * if (Webhook.verify(payload, signature, timestamp, webhookSecret)) {
  *     WebhookEvent event = Webhook.parse(payload);
@@ -44,8 +44,8 @@ public final class Webhook {
      * Verifies a webhook signature.
      *
      * @param payload   the raw request body
-     * @param signature the X-RenderScreenshot-Signature header
-     * @param timestamp the X-RenderScreenshot-Timestamp header
+     * @param signature the X-Webhook-Signature header
+     * @param timestamp the X-Webhook-Timestamp header
      * @param secret    your webhook secret
      * @return true if the signature is valid, false otherwise
      */
@@ -57,8 +57,8 @@ public final class Webhook {
      * Verifies a webhook signature with custom timestamp tolerance.
      *
      * @param payload          the raw request body
-     * @param signature        the X-RenderScreenshot-Signature header
-     * @param timestamp        the X-RenderScreenshot-Timestamp header
+     * @param signature        the X-Webhook-Signature header
+     * @param timestamp        the X-Webhook-Timestamp header
      * @param secret           your webhook secret
      * @param toleranceSeconds maximum allowed age of the webhook in seconds
      * @return true if the signature is valid, false otherwise
@@ -121,9 +121,9 @@ public final class Webhook {
 
         for (Map.Entry<String, String> entry : headers.entrySet()) {
             String key = entry.getKey().toLowerCase();
-            if (key.equals("x-renderscreenshot-signature")) {
+            if (key.equals("x-webhook-signature")) {
                 signature = entry.getValue();
-            } else if (key.equals("x-renderscreenshot-timestamp")) {
+            } else if (key.equals("x-webhook-timestamp")) {
                 timestamp = entry.getValue();
             }
         }

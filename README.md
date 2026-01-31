@@ -304,8 +304,8 @@ import com.renderscreenshot.sdk.Webhook.WebhookEvent;
 
 // In your webhook handler
 String payload = request.getBody();
-String signature = request.getHeader("X-RenderScreenshot-Signature");
-String timestamp = request.getHeader("X-RenderScreenshot-Timestamp");
+String signature = request.getHeader("X-Webhook-Signature");
+String timestamp = request.getHeader("X-Webhook-Timestamp");
 
 if (Webhook.verify(payload, signature, timestamp, webhookSecret)) {
     WebhookEvent event = Webhook.parse(payload);

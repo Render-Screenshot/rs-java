@@ -182,7 +182,7 @@ class BatchTest {
                 + "\"results\": ["
                 + "{\"url\": \"https://good1.com\", \"success\": true, \"response\": {\"url\": \"https://cdn/1.png\"}},"
                 + "{\"url\": \"https://good2.com\", \"success\": true, \"response\": {\"url\": \"https://cdn/2.png\"}},"
-                + "{\"url\": \"https://bad.invalid\", \"success\": false, \"error\": \"DNS resolution failed\"}"
+                + "{\"url\": \"https://bad.invalid\", \"success\": false, \"error\": {\"code\": \"dns_error\", \"message\": \"DNS resolution failed\"}}"
                 + "]"
                 + "}";
         server.enqueue(new MockResponse()

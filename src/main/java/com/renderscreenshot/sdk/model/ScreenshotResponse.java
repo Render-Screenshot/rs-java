@@ -25,6 +25,9 @@ public class ScreenshotResponse {
     @JsonProperty("cache_key")
     private String cacheKey;
 
+    @JsonProperty("storage_path")
+    private String storagePath;
+
     private int ttl;
     private boolean cached;
 
@@ -159,6 +162,24 @@ public class ScreenshotResponse {
     }
 
     /**
+     * Returns the storage path if custom storage is enabled.
+     *
+     * @return the storage path, or null if not stored
+     */
+    public String getStoragePath() {
+        return storagePath;
+    }
+
+    /**
+     * Sets the storage path.
+     *
+     * @param storagePath the storage path
+     */
+    public void setStoragePath(String storagePath) {
+        this.storagePath = storagePath;
+    }
+
+    /**
      * Returns the cache TTL in seconds.
      *
      * @return the TTL
@@ -204,6 +225,7 @@ public class ScreenshotResponse {
                 + ", format='" + format + '\''
                 + ", size=" + size
                 + ", cacheKey='" + cacheKey + '\''
+                + ", storagePath='" + storagePath + '\''
                 + ", ttl=" + ttl
                 + ", cached=" + cached
                 + '}';

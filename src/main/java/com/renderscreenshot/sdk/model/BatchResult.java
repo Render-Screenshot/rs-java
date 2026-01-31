@@ -11,7 +11,7 @@ public class BatchResult {
     private String url;
     private boolean success;
     private ScreenshotResponse response;
-    private String error;
+    private BatchError error;
 
     /** Default constructor for Jackson deserialization. */
     public BatchResult() {
@@ -72,20 +72,20 @@ public class BatchResult {
     }
 
     /**
-     * Returns the error message if failed.
+     * Returns the error details if failed.
      *
-     * @return the error message, or null if successful
+     * @return the error details, or null if successful
      */
-    public String getError() {
+    public BatchError getError() {
         return error;
     }
 
     /**
-     * Sets the error message.
+     * Sets the error details.
      *
-     * @param error the error message
+     * @param error the error details
      */
-    public void setError(String error) {
+    public void setError(BatchError error) {
         this.error = error;
     }
 
@@ -95,7 +95,7 @@ public class BatchResult {
                 + "url='" + url + '\''
                 + ", success=" + success
                 + ", response=" + response
-                + ", error='" + error + '\''
+                + ", error=" + error
                 + '}';
     }
 }

@@ -175,8 +175,8 @@ class WebhookTest {
     @Test
     void extractHeaders_findsHeaders() {
         Map<String, String> headers = new HashMap<>();
-        headers.put("X-RenderScreenshot-Signature", "sig_value");
-        headers.put("X-RenderScreenshot-Timestamp", "12345");
+        headers.put("X-Webhook-Signature", "sig_value");
+        headers.put("X-Webhook-Timestamp", "12345");
         headers.put("Content-Type", "application/json");
 
         String[] result = Webhook.extractHeaders(headers);
@@ -188,8 +188,8 @@ class WebhookTest {
     @Test
     void extractHeaders_caseInsensitive() {
         Map<String, String> headers = new HashMap<>();
-        headers.put("x-renderscreenshot-signature", "sig_value");
-        headers.put("X-RENDERSCREENSHOT-TIMESTAMP", "12345");
+        headers.put("x-webhook-signature", "sig_value");
+        headers.put("X-WEBHOOK-TIMESTAMP", "12345");
 
         String[] result = Webhook.extractHeaders(headers);
 
