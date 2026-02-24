@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-24
+
+### Changed
+
+- **OkHttp** upgraded from 4.12.0 to 5.3.2
+  - Migrated Maven artifact from `okhttp` to `okhttp-jvm` (required for OkHttp 5 on Maven)
+  - No API changes required (existing parameter order already compatible)
+- **Jackson Databind** upgraded from 2.16.1 to 2.21.1 (5 minor versions of bug fixes and improvements)
+- **JUnit Jupiter** upgraded from 5.10.1 to 5.11.0
+- **Maven plugins** upgraded to latest versions:
+  - maven-compiler-plugin 3.12.1 → 3.15.0
+  - maven-surefire-plugin 3.2.3 → 3.5.5
+  - maven-source-plugin 3.3.0 → 3.4.0
+  - maven-javadoc-plugin 3.6.3 → 3.12.0
+  - maven-checkstyle-plugin 3.3.1 → 3.6.0
+  - jacoco-maven-plugin 0.8.11 → 0.8.14
+
+### Added
+
+- Java 25 (LTS) added to CI test matrix
+- Dependabot configuration for automated dependency updates
+
+### Fixed
+
+- OWASP dependency check now fails the build on high-severity CVEs (was silently passing)
+- Codecov action upgraded from v3 to v5
+- Pre-commit hooks updated (gitleaks v8.30.0, pre-commit-hooks v6.0.0)
+
 ## [1.0.0] - 2025-01-30
 
 ### Added
@@ -57,4 +85,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Checkstyle code style enforcement
 - JaCoCo code coverage reporting
 
+[1.1.0]: https://github.com/render-screenshot/rs-java/releases/tag/v1.1.0
 [1.0.0]: https://github.com/render-screenshot/rs-java/releases/tag/v1.0.0
