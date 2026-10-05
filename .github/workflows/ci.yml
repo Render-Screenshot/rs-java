@@ -95,7 +95,10 @@ jobs:
           cache: maven
 
       - name: OWASP Dependency Check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: |
           mvn -B org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=9 \
+            -DnvdApiKey="$NVD_API_KEY" \
             -DsuppressionFile=.github/dependency-check-suppressions.xml
