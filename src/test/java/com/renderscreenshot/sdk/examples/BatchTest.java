@@ -18,6 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -137,8 +138,8 @@ class BatchTest {
                 + "\"completed\": 2,"
                 + "\"failed\": 0,"
                 + "\"results\": ["
-                + "{\"url\": \"https://a.com\", \"success\": true, \"response\": {\"url\": \"https://cdn/a.png\"}},"
-                + "{\"url\": \"https://b.com\", \"success\": true, \"response\": {\"url\": \"https://cdn/b.png\"}}"
+                + "{\"url\": \"https://a.com\", \"status\": \"completed\", \"image\": {\"image_url\": \"https://cdn/a.png\"}, \"error\": null},"
+                + "{\"url\": \"https://b.com\", \"status\": \"completed\", \"image\": {\"image_url\": \"https://cdn/b.png\"}, \"error\": null}"
                 + "]"
                 + "}";
         server.enqueue(new MockResponse()
@@ -162,8 +163,8 @@ class BatchTest {
 
         for (BatchResult result : batch.getResults()) {
             if (result.isSuccess()) {
-                assertNotNull(result.getResponse());
-                assertNotNull(result.getResponse().getUrl());
+                assertNotNull(result.getImage());
+                assertNotNull(result.getImage().getImageUrl());
             }
         }
     }
@@ -180,9 +181,9 @@ class BatchTest {
                 + "\"completed\": 2,"
                 + "\"failed\": 1,"
                 + "\"results\": ["
-                + "{\"url\": \"https://good1.com\", \"success\": true, \"response\": {\"url\": \"https://cdn/1.png\"}},"
-                + "{\"url\": \"https://good2.com\", \"success\": true, \"response\": {\"url\": \"https://cdn/2.png\"}},"
-                + "{\"url\": \"https://bad.invalid\", \"success\": false, \"error\": {\"code\": \"dns_error\", \"message\": \"DNS resolution failed\"}}"
+                + "{\"url\": \"https://good1.com\", \"status\": \"completed\", \"image\": {\"image_url\": \"https://cdn/1.png\"}, \"error\": null},"
+                + "{\"url\": \"https://good2.com\", \"status\": \"completed\", \"image\": {\"image_url\": \"https://cdn/2.png\"}, \"error\": null},"
+                + "{\"url\": \"https://bad.invalid\", \"status\": \"failed\", \"image\": null, \"error\": \"DNS resolution failed\"}"
                 + "]"
                 + "}";
         server.enqueue(new MockResponse()
@@ -198,11 +199,13 @@ class BatchTest {
         for (BatchResult result : batch.getResults()) {
             if (result.isSuccess()) {
                 successCount++;
-                // Use result.getResponse().getUrl() for the screenshot
+                // Use result.getImage().getImageUrl() for the screenshot
+                assertNotNull(result.getImage().getImageUrl());
             } else {
                 failCount++;
                 // Log result.getError()
-                assertNotNull(result.getError());
+                assertEquals("DNS resolution failed", result.getError());
+                assertNull(result.getImage());
             }
         }
 

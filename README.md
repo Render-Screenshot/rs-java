@@ -222,7 +222,7 @@ while (!batch.isComplete()) {
 // Process results
 for (BatchResult result : batch.getResults()) {
     if (result.isSuccess()) {
-        System.out.println(result.getUrl() + " -> " + result.getResponse().getUrl());
+        System.out.println(result.getUrl() + " -> " + result.getImage().getImageUrl());
     } else {
         System.out.println(result.getUrl() + " failed: " + result.getError());
     }

@@ -224,8 +224,8 @@ class ClientTest {
                 + "\"completed\": 2,"
                 + "\"failed\": 0,"
                 + "\"results\": ["
-                + "{\"url\": \"https://a.com\", \"success\": true, \"response\": {\"url\": \"https://cdn/a.png\"}},"
-                + "{\"url\": \"https://b.com\", \"success\": true, \"response\": {\"url\": \"https://cdn/b.png\"}}"
+                + "{\"url\": \"https://a.com\", \"status\": \"completed\", \"image\": {\"image_url\": \"https://cdn/a.png\"}, \"error\": null},"
+                + "{\"url\": \"https://b.com\", \"status\": \"completed\", \"image\": {\"image_url\": \"https://cdn/b.png\"}, \"error\": null}"
                 + "]"
                 + "}";
         server.enqueue(new MockResponse()

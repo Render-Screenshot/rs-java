@@ -1,20 +1,45 @@
 package com.renderscreenshot.sdk.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Result for a single URL in a batch request.
+ *
+ * <p>{@link #getImage()} is set when the status is {@code "completed"}.
+ * {@link #getError()} holds the error message when the status is {@code "failed"}.</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BatchResult {
 
+    private Integer position;
     private String url;
-    private boolean success;
-    private ScreenshotResponse response;
-    private BatchError error;
+    private String status;
+    private BatchImage image;
+    private String error;
+    @JsonProperty("response_time_ms")
+    private Integer responseTimeMs;
 
     /** Default constructor for Jackson deserialization. */
     public BatchResult() {
+    }
+
+    /**
+     * Returns the index of this URL in the original request.
+     *
+     * @return the position, or null if not provided
+     */
+    public Integer getPosition() {
+        return position;
+    }
+
+    /**
+     * Sets the position.
+     *
+     * @param position the position
+     */
+    public void setPosition(Integer position) {
+        this.position = position;
     }
 
     /**
@@ -36,66 +61,94 @@ public class BatchResult {
     }
 
     /**
+     * Returns the item status.
+     *
+     * @return the status (e.g., "pending", "processing", "completed", "failed")
+     */
+    public String getStatus() {
+        return status;
+    }
+
+    /**
+     * Sets the item status.
+     *
+     * @param status the status
+     */
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    /**
      * Returns whether the screenshot was captured successfully.
      *
-     * @return true if successful, false otherwise
+     * @return true if the status is "completed", false otherwise
      */
     public boolean isSuccess() {
-        return success;
+        return "completed".equals(status);
     }
 
     /**
-     * Sets the success flag.
+     * Returns the screenshot details if successful.
      *
-     * @param success the success flag
+     * @return the image, or null if not completed
      */
-    public void setSuccess(boolean success) {
-        this.success = success;
+    public BatchImage getImage() {
+        return image;
     }
 
     /**
-     * Returns the screenshot response if successful.
+     * Sets the screenshot details.
      *
-     * @return the response, or null if failed
+     * @param image the image
      */
-    public ScreenshotResponse getResponse() {
-        return response;
+    public void setImage(BatchImage image) {
+        this.image = image;
     }
 
     /**
-     * Sets the screenshot response.
+     * Returns the error message if failed.
      *
-     * @param response the response
+     * @return the error message, or null if not failed
      */
-    public void setResponse(ScreenshotResponse response) {
-        this.response = response;
-    }
-
-    /**
-     * Returns the error details if failed.
-     *
-     * @return the error details, or null if successful
-     */
-    public BatchError getError() {
+    public String getError() {
         return error;
     }
 
     /**
-     * Sets the error details.
+     * Sets the error message.
      *
-     * @param error the error details
+     * @param error the error message
      */
-    public void setError(BatchError error) {
+    public void setError(String error) {
         this.error = error;
+    }
+
+    /**
+     * Returns the capture time in milliseconds.
+     *
+     * @return the response time, or null if unknown
+     */
+    public Integer getResponseTimeMs() {
+        return responseTimeMs;
+    }
+
+    /**
+     * Sets the capture time.
+     *
+     * @param responseTimeMs the response time in milliseconds
+     */
+    public void setResponseTimeMs(Integer responseTimeMs) {
+        this.responseTimeMs = responseTimeMs;
     }
 
     @Override
     public String toString() {
         return "BatchResult{"
-                + "url='" + url + '\''
-                + ", success=" + success
-                + ", response=" + response
-                + ", error=" + error
+                + "position=" + position
+                + ", url='" + url + '\''
+                + ", status='" + status + '\''
+                + ", image=" + image
+                + ", error='" + error + '\''
                 + '}';
     }
 }
