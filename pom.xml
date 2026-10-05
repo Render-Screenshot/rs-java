@@ -44,8 +44,6 @@
         <!-- Dependency versions -->
         <okhttp.version>5.5.0</okhttp.version>
         <jackson.version>2.22.3</jackson.version>
-        <!-- Pinned above okhttp's transitive version for CVE-2026-53914 -->
-        <kotlin-stdlib.version>2.4.20</kotlin-stdlib.version>
         <junit.version>5.11.0</junit.version>
 
         <!-- Plugin versions -->
@@ -56,16 +54,6 @@
         <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
         <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-stdlib</artifactId>
-                <version>${kotlin-stdlib.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
         <!-- HTTP Client -->
