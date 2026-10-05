@@ -1,7 +1,7 @@
-jdk:
-  - openjdk11
+# JitPack's current image has no Maven and a stale JAVA_HOME, so install both via SDKMAN.
+# The pom still targets Java 11 bytecode.
 before_install:
+  - sdk install java 17.0.20-tem
   - sdk install maven 3.9.9
-  - mvn -v
 install:
-  - mvn -B clean install -DskipTests
+  - export JAVA_HOME="$HOME/.sdkman/candidates/java/current" && export PATH="$JAVA_HOME/bin:$HOME/.sdkman/candidates/maven/current/bin:$PATH" && mvn -v && mvn -B clean install -DskipTests
