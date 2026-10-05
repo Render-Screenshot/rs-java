@@ -57,7 +57,7 @@ public class Client {
     public static final String API_VERSION = "v1";
 
     /** The SDK version. */
-    public static final String SDK_VERSION = "2.0.0";
+    public static final String SDK_VERSION = "2.0.1";
 
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
