@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-05
+
+### Changed (breaking)
+
+- `BatchResult` now matches the batch API response: `getStatus()`,
+  `getImage()` (a new `BatchImage` with `getImageUrl()`, `getWidth()`,
+  `getHeight()`, `getSize()`, `getFormat()`), `getPosition()` and
+  `getResponseTimeMs()`. `getError()` now returns the error message `String`.
+- Removed `BatchResult.getResponse()`/`setResponse()`, `setSuccess()` and the
+  `BatchError` class. The API never returned those fields, so they were
+  always empty. `isSuccess()` still works and is derived from `status`.
+
+### Security
+
+- OkHttp upgraded to 5.5.0 and `kotlin-stdlib` pinned to 2.4.20
+  (CVE-2026-53914)
+- Jackson Databind upgraded to 2.22.3 (CVE-2026-54512 to CVE-2026-54518)
+
 ## [1.1.0] - 2026-02-24
 
 ### Changed

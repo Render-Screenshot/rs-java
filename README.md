@@ -28,7 +28,7 @@ Add the dependency:
 <dependency>
     <groupId>com.github.Render-Screenshot</groupId>
     <artifactId>rs-java</artifactId>
-    <version>v1.0.0</version>
+    <version>v2.0.0</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ repositories {
 Add the dependency:
 
 ```groovy
-implementation 'com.github.Render-Screenshot:rs-java:v1.0.0'
+implementation 'com.github.Render-Screenshot:rs-java:v2.0.0'
 ```
 
 ## Requirements
