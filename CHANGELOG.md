@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-10-18
+
+### Fixed
+
+- `take()`, `takeJson()`, `batch()` and `batchAdvanced()` now send the nested
+  JSON body that the API expects (`viewport.*`, `capture.mode`/`capture.selector`,
+  `output.*`, `wait.*` including `wait.for_selector`, `block.*`, `page.*`,
+  `browser.*`, `network.*`, `cache.*`, `pdf.*`, `storage.*`). Before, most
+  options were sent as flat top-level keys and the API ignored them.
+- PDF options use the API names: `pdf.paper` (was `paper_size`),
+  `pdf.print_background`, `pdf.margin_top` etc.
+- `takeJson()` sends `Accept: application/json` instead of the ignored
+  `response_type` body field. `TakeOptions.responseType()` is deprecated and
+  is no longer sent.
+- `generateUrl()` now creates signed URLs that the API accepts: the query has
+  `key_id` (`rs_pub_...`) and `expires`, uses the GET parameter names
+  (`selector`, `timeout`, `block_cookies`, `pdf_paper`, comma-joined `hide`/`remove`),
+  is sorted and encoded like Ruby `CGI.escape` (`~` kept, `*` encoded), and is
+  signed with HMAC-SHA256 using the secret key (`rs_secret_...`), not the API key.
+- `ScreenshotResponse` (from `takeJson()`) now maps the real API response:
+  `getId()`, `getStatus()`, `getImage()` (`url`, `width`, `height`, `size`,
+  `format`), `getMetadata()`, `getCache()` (`hit`, `key`, `url`, `expires_at`)
+  and `getUsage()` (`credits`, `remaining`). Before, `getUrl()`, `getWidth()`,
+  `isCached()` etc. read flat fields that the API never sends, so they were
+  always null, 0 or false. These getters now read the nested objects.
+  `getTtl()` and `getStoragePath()` are deprecated (the API has no such fields).
+- `WebhookEvent` now reads the `event` field. `getType()` was always null; it now
+  returns the same value as the new `getEvent()`. Added `getTimestamp()` and
+  `getErrorCode()` (`data.error_code` on failed events).
+- `Webhook.verify()` now accepts the `X-Webhook-Signature` header as the API
+  sends it (`sha256=<hex>`). Before, real webhooks always failed verification.
+  Bare hex is still accepted.
+- `batchAdvanced()`: the `BatchRequest` URL now takes precedence over a URL in
+  its options; `batch()` no longer sends `url`/`html` inside shared options.
+
+### Added
+
+- `Client(String apiKey, String baseUrl, Duration timeout, String signingKey, String publicKeyId)`.
+- `generateUrl(TakeOptions, Instant, String signingKey, String publicKeyId)`.
+  `generateUrl` throws `RenderScreenshotException` (`invalid_request`) when
+  signing credentials are missing.
+- `TakeOptions.toQueryParams()` returns the flat GET parameters.
+
 ### Changed
 
 - Removed the `kotlin-stdlib` 2.4.20 pin added in 2.0.0. CVE-2026-53914

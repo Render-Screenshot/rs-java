@@ -1,5 +1,6 @@
 package com.renderscreenshot.sdk;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,13 +28,14 @@ import java.util.Map;
  *
  * if (Webhook.verify(payload, signature, timestamp, webhookSecret)) {
  *     WebhookEvent event = Webhook.parse(payload);
- *     System.out.println("Received event: " + event.getType());
+ *     System.out.println("Received event: " + event.getEvent());
  * }
  * }</pre>
  */
 public final class Webhook {
 
     private static final int DEFAULT_TOLERANCE_SECONDS = 300; // 5 minutes
+    private static final String SIGNATURE_PREFIX = "sha256=";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private Webhook() {
@@ -44,7 +46,7 @@ public final class Webhook {
      * Verifies a webhook signature.
      *
      * @param payload   the raw request body
-     * @param signature the X-Webhook-Signature header
+     * @param signature the X-Webhook-Signature header ("sha256=" followed by hex; bare hex is also accepted)
      * @param timestamp the X-Webhook-Timestamp header
      * @param secret    your webhook secret
      * @return true if the signature is valid, false otherwise
@@ -88,8 +90,13 @@ public final class Webhook {
             return false;
         }
 
+        // The API sends "sha256=<hex>"; accept bare hex too
+        String providedSignature = signature.startsWith(SIGNATURE_PREFIX)
+                ? signature.substring(SIGNATURE_PREFIX.length())
+                : signature;
+
         // Constant-time comparison to prevent timing attacks
-        return constantTimeEquals(signature, expectedSignature);
+        return constantTimeEquals(providedSignature, expectedSignature);
     }
 
     /**
@@ -169,7 +176,8 @@ public final class Webhook {
     public static class WebhookEvent {
 
         private String id;
-        private String type;
+        private String event;
+        private String timestamp;
         private Object data;
 
         @JsonProperty("created_at")
@@ -198,21 +206,74 @@ public final class Webhook {
         }
 
         /**
-         * Returns the event type.
+         * Returns the event name from the {@code event} field.
          *
-         * @return event type (e.g., "batch.completed", "screenshot.ready")
+         * @return event name (e.g., "screenshot.completed", "screenshot.failed",
+         *         "batch.completed", "batch.failed", "test")
          */
-        public String getType() {
-            return type;
+        public String getEvent() {
+            return event;
         }
 
         /**
-         * Sets the event type.
+         * Sets the event name.
          *
-         * @param type event type
+         * @param event event name
          */
+        public void setEvent(String event) {
+            this.event = event;
+        }
+
+        /**
+         * Returns the event name. Same value as {@link #getEvent()}.
+         *
+         * @return event name (e.g., "screenshot.completed", "batch.completed")
+         */
+        @JsonIgnore
+        public String getType() {
+            return event;
+        }
+
+        /**
+         * Sets the event name. Same as {@link #setEvent(String)}.
+         *
+         * @param type event name
+         */
+        @JsonIgnore
         public void setType(String type) {
-            this.type = type;
+            this.event = type;
+        }
+
+        /**
+         * Returns when the event was sent (ISO 8601, from the {@code timestamp} field).
+         *
+         * @return ISO 8601 timestamp, or null
+         */
+        public String getTimestamp() {
+            return timestamp;
+        }
+
+        /**
+         * Sets the event timestamp.
+         *
+         * @param timestamp ISO 8601 timestamp
+         */
+        public void setTimestamp(String timestamp) {
+            this.timestamp = timestamp;
+        }
+
+        /**
+         * Returns {@code data.error_code} for failed events.
+         *
+         * @return the error code (e.g., "timeout"), or null if not present
+         */
+        @JsonIgnore
+        public String getErrorCode() {
+            if (data instanceof Map) {
+                Object code = ((Map<?, ?>) data).get("error_code");
+                return code != null ? code.toString() : null;
+            }
+            return null;
         }
 
         /**
@@ -256,7 +317,7 @@ public final class Webhook {
 
         @Override
         public String toString() {
-            return "WebhookEvent{id='" + id + "', type='" + type + "', createdAt='" + createdAt + "'}";
+            return "WebhookEvent{id='" + id + "', event='" + event + "', timestamp='" + timestamp + "'}";
         }
     }
 }

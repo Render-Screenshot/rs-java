@@ -22,8 +22,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -57,13 +59,15 @@ public class Client {
     public static final String API_VERSION = "v1";
 
     /** The SDK version. */
-    public static final String SDK_VERSION = "2.0.1";
+    public static final String SDK_VERSION = "2.0.2";
 
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
 
     private final String apiKey;
     private final String baseUrl;
+    private final String signingKey;
+    private final String publicKeyId;
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
 
@@ -100,12 +104,35 @@ public class Client {
      * @throws IllegalArgumentException if apiKey is null or empty
      */
     public Client(String apiKey, String baseUrl, Duration timeout) {
+        this(apiKey, baseUrl, timeout, null, null);
+    }
+
+    /**
+     * Creates a new client with custom configuration and signed URL credentials.
+     *
+     * <p>The signing key ({@code rs_secret_...}) and public key ID ({@code rs_pub_...})
+     * are only used by {@link #generateUrl(TakeOptions, Instant)}. They are never sent
+     * as request credentials.</p>
+     *
+     * @param apiKey      your RenderScreenshot API key ({@code rs_live_...})
+     * @param baseUrl     the API base URL, or null for the default
+     * @param timeout     request timeout, or null for the default (30 seconds)
+     * @param signingKey  secret key used to sign URLs ({@code rs_secret_...}), may be null
+     * @param publicKeyId public key ID included in signed URLs ({@code rs_pub_...}), may be null
+     * @throws IllegalArgumentException if apiKey is null or empty
+     */
+    public Client(String apiKey, String baseUrl, Duration timeout, String signingKey, String publicKeyId) {
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalArgumentException("API key is required");
+        }
+        if (timeout == null) {
+            timeout = DEFAULT_TIMEOUT;
         }
 
         this.apiKey = apiKey;
         this.baseUrl = baseUrl != null ? baseUrl : DEFAULT_BASE_URL;
+        this.signingKey = signingKey;
+        this.publicKeyId = publicKeyId;
         this.objectMapper = new ObjectMapper();
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
@@ -130,13 +157,14 @@ public class Client {
     /**
      * Captures a screenshot and returns metadata (URL, dimensions, etc.).
      *
+     * <p>Sends the nested JSON body with an {@code Accept: application/json} header.</p>
+     *
      * @param options screenshot options
      * @return screenshot metadata
      * @throws RenderScreenshotException if the capture fails
      */
     public ScreenshotResponse takeJson(TakeOptions options) {
         Map<String, Object> params = options.toParams();
-        params.put("response_type", "json");
         String json = postJson("/v1/screenshot", params);
         try {
             return objectMapper.readValue(json, ScreenshotResponse.class);
@@ -146,24 +174,57 @@ public class Client {
     }
 
     /**
-     * Generates a signed URL for the screenshot.
+     * Generates a signed GET URL for the screenshot using the signing credentials
+     * passed to the constructor.
      *
-     * <p>Signed URLs can be used in img tags or shared without exposing your API key.</p>
+     * <p>Signed URLs can be used in img tags or shared without exposing your API key.
+     * They work only for GET /v1/screenshot, so only flat GET options are included
+     * (see {@link TakeOptions#toQueryParams()}).</p>
      *
      * @param options   screenshot options
      * @param expiresAt when the signed URL expires
      * @return the signed URL
+     * @throws RenderScreenshotException if the signing key or public key ID is missing
      */
     public String generateUrl(TakeOptions options, Instant expiresAt) {
-        String queryString = options.toQueryString();
-        long expiresTimestamp = expiresAt.getEpochSecond();
+        return generateUrl(options, expiresAt, null, null);
+    }
 
-        String url = baseUrl + "/v1/screenshot?" + queryString + "&expires=" + expiresTimestamp;
+    /**
+     * Generates a signed GET URL for the screenshot with explicit signing credentials.
+     *
+     * <p>The URL contains {@code key_id} (the public key ID), {@code expires} (Unix
+     * seconds) and the flat GET options. The {@code signature} is a hex HMAC-SHA256,
+     * keyed with the secret key, over the sorted query string.</p>
+     *
+     * @param options     screenshot options
+     * @param expiresAt   when the signed URL expires
+     * @param signingKey  secret key ({@code rs_secret_...}); null uses the constructor value
+     * @param publicKeyId public key ID ({@code rs_pub_...}); null uses the constructor value
+     * @return the signed URL
+     * @throws RenderScreenshotException if the signing key or public key ID is missing
+     */
+    public String generateUrl(TakeOptions options, Instant expiresAt, String signingKey, String publicKeyId) {
+        String secret = signingKey != null ? signingKey : this.signingKey;
+        String keyId = publicKeyId != null ? publicKeyId : this.publicKeyId;
 
-        // Compute signature
-        String signature = computeSignature(url);
+        if (secret == null || secret.isEmpty() || keyId == null || keyId.isEmpty()) {
+            throw RenderScreenshotException.invalidRequest(
+                    "Signed URLs require signingKey (rs_secret_*) and publicKeyId (rs_pub_*). "
+                            + "Pass them to the Client constructor or to generateUrl directly.");
+        }
+        if (expiresAt == null) {
+            throw RenderScreenshotException.invalidRequest("expiresAt is required for signed URLs");
+        }
 
-        return url + "&signature=" + signature;
+        Map<String, String> params = new TreeMap<>(options.toQueryParams());
+        params.put("expires", String.valueOf(expiresAt.getEpochSecond()));
+        params.put("key_id", keyId);
+
+        String queryString = TakeOptions.buildQueryString(params);
+        String signature = computeSignature(secret, queryString);
+
+        return baseUrl + "/v1/screenshot?" + queryString + "&signature=" + signature;
     }
 
     // ========== Batch Methods ==========
@@ -180,7 +241,10 @@ public class Client {
         Map<String, Object> params = new HashMap<>();
         params.put("urls", urls);
         if (options != null) {
-            params.put("options", options.toParams());
+            Map<String, Object> shared = options.toParams();
+            shared.remove("url");
+            shared.remove("html");
+            params.put("options", shared);
         }
 
         String json = postJson("/v1/batch", params);
@@ -201,11 +265,11 @@ public class Client {
     public BatchResponse batchAdvanced(List<BatchRequest> requests) {
         List<Map<String, Object>> requestMaps = new ArrayList<>();
         for (BatchRequest request : requests) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("url", request.getUrl());
+            Map<String, Object> map = new LinkedHashMap<>();
             if (request.getOptions() != null) {
                 map.putAll(request.getOptions().toParams());
             }
+            map.put("url", request.getUrl());
             requestMaps.add(map);
         }
 
@@ -310,6 +374,7 @@ public class Client {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("User-Agent", "renderscreenshot-java/" + SDK_VERSION)
                 .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
                 .post(RequestBody.create(json, JSON))
                 .build();
 
@@ -407,10 +472,10 @@ public class Client {
         return RenderScreenshotException.fromResponse(response.code(), message, code, retryAfter);
     }
 
-    private String computeSignature(String data) {
+    private static String computeSignature(String secret, String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec keySpec = new SecretKeySpec(apiKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(keySpec);
             byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();

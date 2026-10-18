@@ -28,7 +28,7 @@ Add the dependency:
 <dependency>
     <groupId>com.github.Render-Screenshot</groupId>
     <artifactId>rs-java</artifactId>
-    <version>v2.0.1</version>
+    <version>v2.0.2</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ repositories {
 Add the dependency:
 
 ```groovy
-implementation 'com.github.Render-Screenshot:rs-java:v2.0.1'
+implementation 'com.github.Render-Screenshot:rs-java:v2.0.2'
 ```
 
 ## Requirements
@@ -64,7 +64,7 @@ import java.nio.file.Path;
 
 public class Example {
     public static void main(String[] args) throws Exception {
-        Client client = new Client("your_api_key");
+        Client client = new Client("rs_live_xxxxx");
 
         // Capture a screenshot
         byte[] screenshot = client.take(TakeOptions.url("https://example.com")
@@ -95,7 +95,7 @@ public class Example {
 ### Basic Screenshot
 
 ```java
-Client client = new Client("your_api_key");
+Client client = new Client("rs_live_xxxxx");
 
 byte[] screenshot = client.take(TakeOptions.url("https://example.com"));
 Files.write(Path.of("screenshot.png"), screenshot);
@@ -163,34 +163,68 @@ byte[] dark = client.take(TakeOptions.url("https://example.com")
 
 ### JSON Response (Metadata)
 
+`takeJson()` sends the same request with an `Accept: application/json` header and returns metadata instead of image bytes.
+
 ```java
 ScreenshotResponse response = client.takeJson(TakeOptions.url("https://example.com")
     .width(1200)
     .height(630));
 
-System.out.println("URL: " + response.getUrl());
-System.out.println("Size: " + response.getSize() + " bytes");
-System.out.println("Cached: " + response.isCached());
+System.out.println("ID: " + response.getId());                  // req_...
+System.out.println("Status: " + response.getStatus());          // completed
+System.out.println("URL: " + response.getImage().getUrl());     // also response.getUrl()
+System.out.println("Size: " + response.getImage().getSize() + " bytes");
+System.out.println("Cached: " + response.isCached());           // cache.hit
+if (response.getUsage() != null) {
+    System.out.println("Credits left: " + response.getUsage().getRemaining());
+}
 ```
+
+The response has the API shape: `id`, `status`, `image` (`url`, `width`,
+`height`, `size`, `format`), `metadata`, `cache` (`hit`, `key`, `url`,
+`expires_at`) and `usage` (`credits`, `remaining`). `getImage()`, `getCache()`
+and `getUsage()` return null when the API leaves that section out.
+The shortcut getters (`getUrl()`, `getWidth()`, `getHeight()`, `getSize()`,
+`getFormat()`, `getCacheKey()`, `getCacheUrl()`, `isCached()`) read these objects.
 
 ### Signed URLs
 
-Generate signed URLs for use in `<img>` tags without exposing your API key:
+Generate signed URLs for use in `<img>` tags without exposing your API key.
+Signed URLs work only for the GET render endpoint (`GET /v1/screenshot`).
+They need your public key ID (`rs_pub_...`) and your secret signing key
+(`rs_secret_...`), not your live API key. Keep the secret key on your server.
 
 ```java
 import java.time.Duration;
 import java.time.Instant;
 
+Client client = new Client(
+    "rs_live_xxxxx",                 // API key for take(), batch(), etc.
+    null,                            // default base URL
+    null,                            // default timeout (30 seconds)
+    "rs_secret_xxxxx",               // signing key
+    "rs_pub_xxxxx");                 // public key ID
+
 TakeOptions options = TakeOptions.url("https://example.com")
     .width(1200)
     .height(630);
 
-// URL expires in 1 hour
+// URL expires in 1 hour (maximum 30 days)
 Instant expiresAt = Instant.now().plus(Duration.ofHours(1));
 String signedUrl = client.generateUrl(options, expiresAt);
 
+// Or pass the credentials per call:
+String other = client.generateUrl(options, expiresAt, "rs_secret_xxxxx", "rs_pub_xxxxx");
+
 // Use in HTML: <img src="{signedUrl}" />
 ```
+
+The URL contains `key_id`, `expires`, the flat GET parameters (for example
+`width`, `full_page`, `selector`, `block_cookies`) and a `signature`.
+Options that only the POST API supports (such as `waitForSelector()` or
+`blockTrackers()`) are not included in signed URLs. `generateUrl()` throws
+`RenderScreenshotException` (code `invalid_request`) when the signing key or
+public key ID is missing.
 
 ### Batch Processing
 
@@ -309,8 +343,12 @@ String timestamp = request.getHeader("X-Webhook-Timestamp");
 
 if (Webhook.verify(payload, signature, timestamp, webhookSecret)) {
     WebhookEvent event = Webhook.parse(payload);
-    System.out.println("Event type: " + event.getType());
+    System.out.println("Event: " + event.getEvent());   // e.g. "screenshot.completed"
+    System.out.println("ID: " + event.getId());
     System.out.println("Event data: " + event.getData());
+    if ("screenshot.failed".equals(event.getEvent())) {
+        System.out.println("Error code: " + event.getErrorCode()); // data.error_code
+    }
 } else {
     // Invalid signature - reject request
 }
@@ -350,7 +388,7 @@ if (Webhook.verify(payload, signature, timestamp, webhookSecret)) {
 | `waitFor(String)` | Wait strategy: "load", "domcontentloaded", "networkidle" |
 | `delay(int)` | Additional delay in milliseconds |
 | `waitForSelector(String)` | Wait for CSS selector to appear |
-| `waitForTimeout(int)` | Maximum wait time in milliseconds |
+| `waitForTimeout(int)` | Maximum wait time in seconds (1-60) |
 
 ### Presets
 
@@ -408,6 +446,11 @@ if (Webhook.verify(payload, signature, timestamp, webhookSecret)) {
 |--------|-------------|
 | `cacheTtl(int)` | Cache TTL in seconds |
 | `cacheRefresh()` | Bypass cache for this request |
+
+`take()`, `takeJson()` and the batch methods send these options as nested JSON
+(for example `viewport.width`, `capture.mode`, `output.format`, `wait.for_selector`,
+`block.ads`, `browser.dark_mode`, `cache.ttl`, `pdf.paper`, `storage.enabled`).
+Use `toParams()` to see the request body and `toQueryString()` to see the flat GET form.
 
 ### PDF Options
 

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -310,7 +311,7 @@ class TakeOptionsTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> pdf = (Map<String, Object>) params.get("pdf");
-        assertEquals("a4", pdf.get("paper_size"));
+        assertEquals("a4", pdf.get("paper"));
         assertEquals(true, pdf.get("landscape"));
     }
 
@@ -352,13 +353,98 @@ class TakeOptionsTest {
     }
 
     @Test
-    void toQueryString_handlesList() {
+    void toQueryString_joinsListsWithCommas() {
         TakeOptions options = TakeOptions.url("https://example.com")
-                .blockUrls(Arrays.asList("https://a.com", "https://b.com"));
+                .hide(Arrays.asList(".ad", "#popup"));
 
         String qs = options.toQueryString();
-        assertTrue(qs.contains("block_urls%5B%5D=https%3A%2F%2Fa.com"));
-        assertTrue(qs.contains("block_urls%5B%5D=https%3A%2F%2Fb.com"));
+        assertTrue(qs.contains("hide=.ad%2C%23popup"));
+    }
+
+    @Test
+    void toQueryString_usesGetParameterNamesAndSorts() {
+        TakeOptions options = TakeOptions.url("https://example.com")
+                .width(1200)
+                .element("#main")
+                .blockCookieBanners()
+                .waitForTimeout(5000)
+                .pdfPaperSize("a4")
+                .blockTrackers()
+                .waitForSelector(".ready");
+
+        assertEquals("block_cookies=true&pdf_paper=a4&selector=%23main&timeout=5000"
+                + "&url=https%3A%2F%2Fexample.com&width=1200", options.toQueryString());
+    }
+
+    @Test
+    void cgiEscape_matchesRubyCgiEscape() {
+        assertEquals("a+b~%2A%28%29%21%27%C3%A9-._", TakeOptions.cgiEscape("a b~*()!'\u00e9-._"));
+    }
+
+    @Test
+    void toParams_nestsAllGroups() {
+        TakeOptions options = TakeOptions.url("https://example.com")
+                .device("iphone_14")
+                .mobile()
+                .waitFor("networkidle")
+                .delay(500)
+                .waitForTimeout(10000)
+                .blockTrackers()
+                .blockChatWidgets()
+                .blockUrls(Arrays.asList("*.ads.com"))
+                .blockResources(Arrays.asList("font"))
+                .injectScript("1+1")
+                .injectStyle("body{}")
+                .click("#accept")
+                .hide(Arrays.asList(".ad"))
+                .remove(Arrays.asList(".popup"))
+                .reducedMotion()
+                .mediaType("print")
+                .userAgent("UA")
+                .timezone("UTC")
+                .locale("en-US")
+                .authBearer("tok")
+                .bypassCsp()
+                .pdfPrintBackground()
+                .pdfMarginTop("1in")
+                .storageAcl("public-read");
+
+        Map<String, Object> params = options.toParams();
+        assertEquals("iphone_14", params.get("device"));
+        assertEquals(true, nested(params, "viewport").get("mobile"));
+        assertEquals("networkidle", nested(params, "wait").get("until"));
+        assertEquals(500, nested(params, "wait").get("delay"));
+        assertEquals(10000, nested(params, "wait").get("timeout"));
+        Map<String, Object> block = nested(params, "block");
+        assertEquals(true, block.get("trackers"));
+        assertEquals(true, block.get("chat_widgets"));
+        assertEquals(Arrays.asList("*.ads.com"), block.get("requests"));
+        assertEquals(Arrays.asList("font"), block.get("resources"));
+        Map<String, Object> page = nested(params, "page");
+        assertEquals(Arrays.asList("1+1"), page.get("scripts"));
+        assertEquals(Arrays.asList("body{}"), page.get("styles"));
+        assertEquals("#accept", page.get("click"));
+        assertEquals(Arrays.asList(".ad"), page.get("hide"));
+        assertEquals(Arrays.asList(".popup"), page.get("remove"));
+        Map<String, Object> browser = nested(params, "browser");
+        assertEquals(true, browser.get("reduced_motion"));
+        assertEquals("print", browser.get("media"));
+        assertEquals("UA", browser.get("user_agent"));
+        assertEquals("UTC", browser.get("timezone"));
+        assertEquals("en-US", browser.get("locale"));
+        Map<String, Object> network = nested(params, "network");
+        assertEquals(true, network.get("bypass_csp"));
+        assertEquals("bearer", nested(network, "auth").get("type"));
+        assertEquals("tok", nested(network, "auth").get("token"));
+        assertEquals(true, nested(params, "pdf").get("print_background"));
+        assertEquals("1in", nested(params, "pdf").get("margin_top"));
+        assertEquals("public-read", nested(params, "storage").get("acl"));
+        assertFalse(params.containsKey("block_trackers"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> nested(Map<String, Object> params, String key) {
+        return (Map<String, Object>) params.get(key);
     }
 
     // ========== Immutability ==========
@@ -396,11 +482,11 @@ class TakeOptionsTest {
 
         Map<String, Object> params = options.toParams();
         assertEquals("https://example.com", params.get("url"));
-        assertEquals("png", params.get("format"));
-        assertEquals(true, params.get("block_ads"));
-        assertEquals(true, params.get("block_trackers"));
-        assertEquals(true, params.get("block_cookie_banners"));
-        assertEquals(86400, params.get("cache_ttl"));
+        assertEquals("png", nested(params, "output").get("format"));
+        assertEquals(true, nested(params, "block").get("ads"));
+        assertEquals(true, nested(params, "block").get("trackers"));
+        assertEquals(true, nested(params, "block").get("cookie_banners"));
+        assertEquals(86400, nested(params, "cache").get("ttl"));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> viewport = (Map<String, Object>) params.get("viewport");

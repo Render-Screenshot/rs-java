@@ -19,7 +19,8 @@ class SignedUrlsTest {
      */
     @Test
     void basicSignedUrl() {
-        Client client = new Client("test_secret_key", "https://api.renderscreenshot.com", Duration.ofSeconds(30));
+        Client client = new Client("rs_live_xxxxx", "https://api.renderscreenshot.com", Duration.ofSeconds(30),
+                "rs_secret_xxxxx", "rs_pub_xxxxx");
 
         // Example code from README
         TakeOptions options = TakeOptions.url("https://example.com")
@@ -37,6 +38,7 @@ class SignedUrlsTest {
         assertTrue(signedUrl.contains("width=1200"));
         assertTrue(signedUrl.contains("height=630"));
         assertTrue(signedUrl.contains("expires="));
+        assertTrue(signedUrl.contains("key_id=rs_pub_xxxxx"));
         assertTrue(signedUrl.contains("signature="));
     }
 
@@ -45,7 +47,8 @@ class SignedUrlsTest {
      */
     @Test
     void signedUrlWithPreset() {
-        Client client = new Client("test_secret_key", "https://api.renderscreenshot.com", Duration.ofSeconds(30));
+        Client client = new Client("rs_live_xxxxx", "https://api.renderscreenshot.com", Duration.ofSeconds(30),
+                "rs_secret_xxxxx", "rs_pub_xxxxx");
 
         // Example code from README
         TakeOptions options = TakeOptions.url("https://example.com/blog/my-post")
@@ -60,7 +63,7 @@ class SignedUrlsTest {
 
         assertTrue(signedUrl.contains("preset=og_card"));
         assertTrue(signedUrl.contains("block_ads=true"));
-        assertTrue(signedUrl.contains("block_cookie_banners=true"));
+        assertTrue(signedUrl.contains("block_cookies=true"));
     }
 
     /**
@@ -68,7 +71,8 @@ class SignedUrlsTest {
      */
     @Test
     void signedUrlForCdn() {
-        Client client = new Client("test_secret_key", "https://api.renderscreenshot.com", Duration.ofSeconds(30));
+        Client client = new Client("rs_live_xxxxx", "https://api.renderscreenshot.com", Duration.ofSeconds(30),
+                "rs_secret_xxxxx", "rs_pub_xxxxx");
 
         // Example code from README
         TakeOptions options = TakeOptions.url("https://example.com")
@@ -89,7 +93,8 @@ class SignedUrlsTest {
      */
     @Test
     void signedUrlWithEmulation() {
-        Client client = new Client("test_secret_key", "https://api.renderscreenshot.com", Duration.ofSeconds(30));
+        Client client = new Client("rs_live_xxxxx", "https://api.renderscreenshot.com", Duration.ofSeconds(30),
+                "rs_secret_xxxxx", "rs_pub_xxxxx");
 
         // Example code from README
         TakeOptions options = TakeOptions.url("https://example.com")

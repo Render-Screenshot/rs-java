@@ -1,5 +1,6 @@
 package com.renderscreenshot.sdk;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.renderscreenshot.sdk.model.BatchResponse;
 import com.renderscreenshot.sdk.model.Device;
 import com.renderscreenshot.sdk.model.Preset;
@@ -15,12 +16,15 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -102,17 +106,17 @@ class ClientTest {
     // ========== takeJson() Tests ==========
 
     @Test
-    void takeJson_returnsScreenshotResponse() throws Exception {
+    void takeJson_parsesRealResponseShape() throws Exception {
         String jsonResponse = "{"
+                + "\"id\": \"req_ab12cd34\","
+                + "\"status\": \"completed\","
+                + "\"image\": {\"url\": \"https://cdn.example.com/screenshot.png\","
+                + "\"width\": 1200, \"height\": 630, \"size\": 45678, \"format\": \"png\"},"
+                + "\"metadata\": {\"title\": \"Screenshot\"},"
+                + "\"cache\": {\"hit\": false, \"key\": \"screenshots/abc123.png\","
                 + "\"url\": \"https://cdn.example.com/screenshot.png\","
-                + "\"cache_url\": \"https://cache.example.com/abc123.png\","
-                + "\"width\": 1200,"
-                + "\"height\": 630,"
-                + "\"format\": \"png\","
-                + "\"size\": 45678,"
-                + "\"cache_key\": \"abc123\","
-                + "\"ttl\": 86400,"
-                + "\"cached\": false"
+                + "\"expires_at\": \"2026-10-19T12:00:00Z\"},"
+                + "\"usage\": {\"credits\": 1, \"remaining\": 99}"
                 + "}";
         server.enqueue(new MockResponse()
                 .setBody(jsonResponse)
@@ -120,48 +124,225 @@ class ClientTest {
 
         ScreenshotResponse response = client.takeJson(TakeOptions.url("https://example.com"));
 
+        assertEquals("req_ab12cd34", response.getId());
+        assertEquals("completed", response.getStatus());
+        assertEquals("https://cdn.example.com/screenshot.png", response.getImage().getUrl());
+        assertEquals(1200, response.getImage().getWidth());
+        assertEquals(630, response.getImage().getHeight());
+        assertEquals(45678L, response.getImage().getSize());
+        assertEquals("png", response.getImage().getFormat());
+        assertEquals("Screenshot", response.getMetadata().get("title"));
+        assertFalse(response.getCache().isHit());
+        assertEquals("screenshots/abc123.png", response.getCache().getKey());
+        assertEquals("https://cdn.example.com/screenshot.png", response.getCache().getUrl());
+        assertEquals("2026-10-19T12:00:00Z", response.getCache().getExpiresAt());
+        assertEquals(1, response.getUsage().getCredits());
+        assertEquals(99, response.getUsage().getRemaining());
+
+        // Shortcut getters read the nested objects
         assertEquals("https://cdn.example.com/screenshot.png", response.getUrl());
-        assertEquals("https://cache.example.com/abc123.png", response.getCacheUrl());
+        assertEquals("https://cdn.example.com/screenshot.png", response.getCacheUrl());
         assertEquals(1200, response.getWidth());
         assertEquals(630, response.getHeight());
+        assertEquals(45678L, response.getSize());
         assertEquals("png", response.getFormat());
-        assertEquals(45678, response.getSize());
-        assertEquals("abc123", response.getCacheKey());
-        assertEquals(86400, response.getTtl());
+        assertEquals("screenshots/abc123.png", response.getCacheKey());
         assertFalse(response.isCached());
     }
 
     @Test
-    void takeJson_sendsResponseTypeJson() throws Exception {
+    void takeJson_handlesMissingOptionalSections() throws Exception {
+        server.enqueue(new MockResponse()
+                .setBody("{\"id\":\"job_1\",\"status\":\"processing\",\"webhook\":{\"url\":\"https://h.example\"}}")
+                .addHeader("Content-Type", "application/json"));
+
+        ScreenshotResponse response = client.takeJson(TakeOptions.url("https://example.com"));
+
+        assertEquals("job_1", response.getId());
+        assertEquals("processing", response.getStatus());
+        assertNull(response.getImage());
+        assertNull(response.getCache());
+        assertNull(response.getUsage());
+        assertNull(response.getUrl());
+        assertEquals(0, response.getWidth());
+        assertFalse(response.isCached());
+    }
+
+    @Test
+    void takeJson_sendsAcceptJsonHeader() throws Exception {
         server.enqueue(new MockResponse()
                 .setBody("{}")
                 .addHeader("Content-Type", "application/json"));
 
-        client.takeJson(TakeOptions.url("https://example.com"));
+        client.takeJson(TakeOptions.url("https://example.com").fullPage());
 
         RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertEquals("application/json", request.getHeader("Accept"));
         String body = request.getBody().readUtf8();
-        assertTrue(body.contains("\"response_type\":\"json\""));
+        assertFalse(body.contains("response_type"));
+        assertTrue(body.contains("\"capture\":{\"mode\":\"full_page\"}"));
+    }
+
+    @Test
+    void take_doesNotSendAcceptJsonHeader() throws Exception {
+        server.enqueue(new MockResponse().setBody("image data"));
+
+        client.take(TakeOptions.url("https://example.com"));
+
+        RecordedRequest request = server.takeRequest();
+        assertFalse("application/json".equals(request.getHeader("Accept")));
+    }
+
+    @Test
+    void take_sendsNestedJsonBody() throws Exception {
+        server.enqueue(new MockResponse().setBody("image data"));
+
+        client.take(TakeOptions.url("https://example.com")
+                .width(1200)
+                .height(630)
+                .fullPage()
+                .element("#main")
+                .format("jpeg")
+                .quality(80)
+                .waitForSelector(".ready")
+                .blockAds()
+                .blockCookieBanners()
+                .darkMode()
+                .cacheTtl(3600)
+                .cacheRefresh());
+
+        RecordedRequest request = server.takeRequest();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = new ObjectMapper().readValue(request.getBody().readUtf8(), Map.class);
+
+        Map<String, Object> expected = new LinkedHashMap<>();
+        expected.put("url", "https://example.com");
+        expected.put("viewport", map("width", 1200, "height", 630));
+        expected.put("capture", map("mode", "full_page", "selector", "#main"));
+        expected.put("output", map("format", "jpeg", "quality", 80));
+        expected.put("wait", map("for_selector", ".ready"));
+        expected.put("block", map("ads", true, "cookie_banners", true));
+        expected.put("browser", map("dark_mode", true));
+        expected.put("cache", map("ttl", 3600, "refresh", true));
+        assertEquals(expected, body);
+    }
+
+    @Test
+    void batch_sendsNestedSharedOptions() throws Exception {
+        server.enqueue(new MockResponse()
+                .setBody("{\"id\":\"batch_1\",\"status\":\"processing\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        client.batch(Arrays.asList("https://a.com", "https://b.com"),
+                TakeOptions.url("dummy").width(800).format("webp").blockAds());
+
+        RecordedRequest request = server.takeRequest();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = new ObjectMapper().readValue(request.getBody().readUtf8(), Map.class);
+        Map<String, Object> expectedOptions = new LinkedHashMap<>();
+        expectedOptions.put("viewport", map("width", 800));
+        expectedOptions.put("output", map("format", "webp"));
+        expectedOptions.put("block", map("ads", true));
+        assertEquals(Arrays.asList("https://a.com", "https://b.com"), body.get("urls"));
+        assertEquals(expectedOptions, body.get("options"));
+    }
+
+    @Test
+    void batchAdvanced_sendsNestedPerRequestOptions() throws Exception {
+        server.enqueue(new MockResponse()
+                .setBody("{\"id\":\"batch_2\",\"status\":\"processing\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        client.batchAdvanced(Arrays.asList(
+                new Client.BatchRequest("https://a.com", TakeOptions.url("ignored").width(1200).fullPage()),
+                new Client.BatchRequest("https://b.com")));
+
+        RecordedRequest request = server.takeRequest();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = new ObjectMapper().readValue(request.getBody().readUtf8(), Map.class);
+        Map<String, Object> first = new LinkedHashMap<>();
+        first.put("url", "https://a.com");
+        first.put("viewport", map("width", 1200));
+        first.put("capture", map("mode", "full_page"));
+        assertEquals(Arrays.asList(first, map("url", "https://b.com")), body.get("requests"));
+    }
+
+    private static Map<String, Object> map(Object... kv) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        for (int i = 0; i < kv.length; i += 2) {
+            m.put((String) kv[i], kv[i + 1]);
+        }
+        return m;
     }
 
     // ========== generateUrl() Tests ==========
 
+    private static final Instant VECTOR_EXPIRES = Instant.ofEpochSecond(1893456000L);
+
+    private static Client signingClient() {
+        return new Client("rs_live_unused", "https://api.renderscreenshot.com", Duration.ofSeconds(30),
+                "rs_secret_vector456", "rs_pub_vector123");
+    }
+
     @Test
-    void generateUrl_createsSignedUrl() {
-        Client c = new Client("secret_key", "https://api.renderscreenshot.com", Duration.ofSeconds(30));
-        Instant expires = Instant.ofEpochSecond(1700000000);
+    void generateUrl_matchesCrossCheckVectorV1() {
+        TakeOptions options = TakeOptions.url("https://example.com/path?a=1&b=two words")
+                .width(1200)
+                .height(630)
+                .format("png")
+                .fullPage();
 
-        String url = c.generateUrl(TakeOptions.url("https://example.com"), expires);
+        String url = signingClient().generateUrl(options, VECTOR_EXPIRES);
 
-        assertTrue(url.startsWith("https://api.renderscreenshot.com/v1/screenshot?"));
-        assertTrue(url.contains("url=https%3A%2F%2Fexample.com"));
-        assertTrue(url.contains("expires=1700000000"));
-        assertTrue(url.contains("signature="));
+        assertEquals("https://api.renderscreenshot.com/v1/screenshot?expires=1893456000&format=png"
+                + "&full_page=true&height=630&key_id=rs_pub_vector123"
+                + "&url=https%3A%2F%2Fexample.com%2Fpath%3Fa%3D1%26b%3Dtwo+words&width=1200"
+                + "&signature=ff30f019a228e751b71f4bdca8c5341c33eaac0985a18426882525de00ba329a", url);
+    }
+
+    @Test
+    void generateUrl_matchesCrossCheckVectorV2() {
+        TakeOptions options = TakeOptions.url("https://example.com/caf\u00e9?q=a b&x=~*()!'")
+                .width(1200);
+
+        String url = signingClient().generateUrl(options, VECTOR_EXPIRES);
+
+        assertEquals("https://api.renderscreenshot.com/v1/screenshot?expires=1893456000"
+                + "&key_id=rs_pub_vector123"
+                + "&url=https%3A%2F%2Fexample.com%2Fcaf%C3%A9%3Fq%3Da+b%26x%3D~%2A%28%29%21%27&width=1200"
+                + "&signature=8c53d62d192cd5423ea612eb08bbe2df25e22ee89b8f52634be4b8f0812a0e14", url);
+    }
+
+    @Test
+    void generateUrl_explicitCredentialsOverload() {
+        Client c = new Client("rs_live_unused", "https://api.renderscreenshot.com", Duration.ofSeconds(30));
+        TakeOptions options = TakeOptions.url("https://example.com/caf\u00e9?q=a b&x=~*()!'")
+                .width(1200);
+
+        String url = c.generateUrl(options, VECTOR_EXPIRES, "rs_secret_vector456", "rs_pub_vector123");
+
+        assertTrue(url.endsWith(
+                "&signature=8c53d62d192cd5423ea612eb08bbe2df25e22ee89b8f52634be4b8f0812a0e14"));
+    }
+
+    @Test
+    void generateUrl_requiresSigningCredentials() {
+        Client c = new Client("rs_live_key", "https://api.renderscreenshot.com", Duration.ofSeconds(30));
+        TakeOptions options = TakeOptions.url("https://example.com");
+
+        RenderScreenshotException e = assertThrows(RenderScreenshotException.class,
+                () -> c.generateUrl(options, VECTOR_EXPIRES));
+        assertEquals("invalid_request", e.getCode());
+        assertThrows(RenderScreenshotException.class,
+                () -> c.generateUrl(options, VECTOR_EXPIRES, "rs_secret_only", null));
+        assertThrows(RenderScreenshotException.class,
+                () -> c.generateUrl(options, VECTOR_EXPIRES, null, "rs_pub_only"));
     }
 
     @Test
     void generateUrl_includesAllOptions() {
-        Client c = new Client("secret_key", "https://api.renderscreenshot.com", Duration.ofSeconds(30));
+        Client c = signingClient();
         Instant expires = Instant.ofEpochSecond(1700000000);
 
         String url = c.generateUrl(

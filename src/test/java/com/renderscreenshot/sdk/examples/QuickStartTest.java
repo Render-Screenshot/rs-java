@@ -102,13 +102,11 @@ class QuickStartTest {
     @Test
     void jsonResponse() {
         String jsonResponse = "{"
-                + "\"url\": \"https://cdn.example.com/screenshot.png\","
-                + "\"cache_url\": \"https://cache.example.com/abc.png\","
-                + "\"width\": 1200,"
-                + "\"height\": 630,"
-                + "\"format\": \"png\","
-                + "\"size\": 45678,"
-                + "\"cached\": true"
+                + "\"id\": \"req_1\","
+                + "\"status\": \"completed\","
+                + "\"image\": {\"url\": \"https://cdn.example.com/screenshot.png\","
+                + "\"width\": 1200, \"height\": 630, \"size\": 45678, \"format\": \"png\"},"
+                + "\"cache\": {\"hit\": true, \"key\": \"screenshots/abc.png\"}"
                 + "}";
         server.enqueue(new MockResponse()
                 .setBody(jsonResponse)
