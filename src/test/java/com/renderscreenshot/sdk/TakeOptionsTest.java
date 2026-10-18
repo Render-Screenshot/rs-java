@@ -10,6 +10,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TakeOptionsTest {
@@ -221,6 +222,37 @@ class TakeOptionsTest {
         Map<String, Object> config = options.toConfig();
         assertEquals(3600, config.get("cache_ttl"));
         assertEquals(true, config.get("cache_refresh"));
+    }
+
+    @Test
+    void cacheAvailable_setsConfig() {
+        TakeOptions options = TakeOptions.url("https://example.com").cacheAvailable();
+        assertEquals(true, options.toConfig().get("cache_available"));
+    }
+
+    @Test
+    void cacheAvailable_sentAsNestedCacheAvailableInParams() {
+        Map<String, Object> params = TakeOptions.url("https://example.com")
+                .cacheAvailable()
+                .toParams();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cache = (Map<String, Object>) params.get("cache");
+        assertEquals(true, cache.get("available"));
+    }
+
+    @Test
+    void cacheAvailable_sentAsCacheAvailableQueryParam() {
+        TakeOptions options = TakeOptions.url("https://example.com").cacheAvailable();
+        assertEquals("true", options.toQueryParams().get("cache_available"));
+        assertTrue(options.toQueryString().contains("cache_available=true"));
+    }
+
+    @Test
+    void cacheAvailable_isImmutable() {
+        TakeOptions base = TakeOptions.url("https://example.com");
+        base.cacheAvailable();
+        assertNull(base.toConfig().get("cache_available"));
     }
 
     // ========== PDF Options ==========

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-10-18
+
+### Added
+
+- `cacheAvailable()` option. It sends `cache.available: true` in POST bodies
+  and `cache_available=true` in GET / signed URLs, so the API can reuse an
+  identical cached render inside the cache TTL. Without it every request
+  renders a fresh screenshot.
+
 ## [2.0.2] - 2026-10-18
 
 ### Fixed

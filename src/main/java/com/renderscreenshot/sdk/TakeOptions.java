@@ -489,6 +489,16 @@ public final class TakeOptions {
         return copyWith("cache_refresh", true);
     }
 
+    /**
+     * Serves a previous screenshot with the same options when one exists
+     * ({@code cache.available}). The API reuses a cached render only when this is set.
+     *
+     * @return a new TakeOptions instance
+     */
+    public TakeOptions cacheAvailable() {
+        return copyWith("cache_available", true);
+    }
+
     // ========== PDF Options ==========
 
     /**
@@ -731,6 +741,7 @@ public final class TakeOptions {
         QUERY_PARAM_NAMES.put("timezone", "timezone");
         QUERY_PARAM_NAMES.put("cache_ttl", "cache_ttl");
         QUERY_PARAM_NAMES.put("cache_refresh", "cache_refresh");
+        QUERY_PARAM_NAMES.put("cache_available", "cache_available");
         QUERY_PARAM_NAMES.put("pdf_paper_size", "pdf_paper");
         QUERY_PARAM_NAMES.put("pdf_width", "pdf_width");
         QUERY_PARAM_NAMES.put("pdf_height", "pdf_height");
@@ -865,6 +876,7 @@ public final class TakeOptions {
         Map<String, Object> cache = new LinkedHashMap<>();
         putIfPresent(cache, "cache_ttl", "ttl");
         putIfPresent(cache, "cache_refresh", "refresh");
+        putIfPresent(cache, "cache_available", "available");
         putGroup(params, "cache", cache);
 
         // PDF

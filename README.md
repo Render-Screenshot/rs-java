@@ -28,7 +28,7 @@ Add the dependency:
 <dependency>
     <groupId>com.github.Render-Screenshot</groupId>
     <artifactId>rs-java</artifactId>
-    <version>v2.0.2</version>
+    <version>v2.0.3</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ repositories {
 Add the dependency:
 
 ```groovy
-implementation 'com.github.Render-Screenshot:rs-java:v2.0.2'
+implementation 'com.github.Render-Screenshot:rs-java:v2.0.3'
 ```
 
 ## Requirements
@@ -446,6 +446,7 @@ if (Webhook.verify(payload, signature, timestamp, webhookSecret)) {
 |--------|-------------|
 | `cacheTtl(int)` | Cache TTL in seconds |
 | `cacheRefresh()` | Bypass cache for this request |
+| `cacheAvailable()` | Reuse an identical cached render inside the TTL (0 credits). Without it every request renders a fresh screenshot |
 
 `take()`, `takeJson()` and the batch methods send these options as nested JSON
 (for example `viewport.width`, `capture.mode`, `output.format`, `wait.for_selector`,
