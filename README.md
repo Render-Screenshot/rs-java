@@ -490,6 +490,8 @@ try {
     System.out.println("Error: " + e.getMessage());
     System.out.println("HTTP Status: " + e.getHttpStatus());
     System.out.println("Error Code: " + e.getCode());
+    System.out.println("Param: " + e.getParam());          // e.g. "url" for validation errors
+    System.out.println("Request ID: " + e.getRequestId());  // quote this to support
 
     if (e.isRetryable()) {
         Integer retryAfter = e.getRetryAfter();

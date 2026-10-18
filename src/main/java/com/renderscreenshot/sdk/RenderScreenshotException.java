@@ -1,5 +1,9 @@
 package com.renderscreenshot.sdk;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.Map;
+
 /**
  * Exception thrown by the RenderScreenshot SDK for API and network errors.
  *
@@ -20,10 +24,16 @@ package com.renderscreenshot.sdk;
  */
 public class RenderScreenshotException extends RuntimeException {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final int httpStatus;
     private final String code;
     private final boolean retryable;
     private final Integer retryAfter;
+    private final String type;
+    private final String param;
+    private final String requestId;
+    private final String docs;
 
     /**
      * Constructs a new RenderScreenshotException.
@@ -36,11 +46,34 @@ public class RenderScreenshotException extends RuntimeException {
      */
     public RenderScreenshotException(String message, int httpStatus, String code,
                                      boolean retryable, Integer retryAfter) {
+        this(message, httpStatus, code, retryable, retryAfter, null, null, null, null);
+    }
+
+    /**
+     * Constructs a new RenderScreenshotException with the API error details.
+     *
+     * @param message    the error message
+     * @param httpStatus the HTTP status code (0 for non-HTTP errors)
+     * @param code       the API error code (may be null)
+     * @param retryable  whether the request can be retried
+     * @param retryAfter seconds to wait before retrying (may be null)
+     * @param type       the API error type, e.g. "validation_error" (may be null)
+     * @param param      the request parameter that caused the error (may be null)
+     * @param requestId  the API request ID (may be null)
+     * @param docs       the documentation link for the error code (may be null)
+     */
+    public RenderScreenshotException(String message, int httpStatus, String code,
+                                     boolean retryable, Integer retryAfter,
+                                     String type, String param, String requestId, String docs) {
         super(message);
         this.httpStatus = httpStatus;
         this.code = code;
         this.retryable = retryable;
         this.retryAfter = retryAfter;
+        this.type = type;
+        this.param = param;
+        this.requestId = requestId;
+        this.docs = docs;
     }
 
     /**
@@ -60,6 +93,10 @@ public class RenderScreenshotException extends RuntimeException {
         this.code = code;
         this.retryable = retryable;
         this.retryAfter = retryAfter;
+        this.type = null;
+        this.param = null;
+        this.requestId = null;
+        this.docs = null;
     }
 
     /**
@@ -96,6 +133,42 @@ public class RenderScreenshotException extends RuntimeException {
      */
     public Integer getRetryAfter() {
         return retryAfter;
+    }
+
+    /**
+     * Returns the API error type.
+     *
+     * @return the error type (e.g., "validation_error"), or null if not available
+     */
+    public String getType() {
+        return type;
+    }
+
+    /**
+     * Returns the request parameter that caused the error.
+     *
+     * @return the parameter name (e.g., "url"), or null if not available
+     */
+    public String getParam() {
+        return param;
+    }
+
+    /**
+     * Returns the API request ID. Quote it when you contact support.
+     *
+     * @return the request ID (e.g., "req_..."), or null if not available
+     */
+    public String getRequestId() {
+        return requestId;
+    }
+
+    /**
+     * Returns the documentation link for the error code.
+     *
+     * @return the documentation URL, or null if not available
+     */
+    public String getDocs() {
+        return docs;
     }
 
     /**
@@ -261,5 +334,70 @@ public class RenderScreenshotException extends RuntimeException {
     public static RenderScreenshotException fromResponse(int status, String message, String code, Integer retryAfter) {
         boolean retryable = status == 429 || status >= 500;
         return new RenderScreenshotException(message, status, code, retryable, retryAfter);
+    }
+
+    /**
+     * Creates an exception from a raw API error response body.
+     *
+     * <p>The API returns {@code {"error": {"type", "code", "message", "param", ...}, "request_id"}}.
+     * Flat {@code {"code", "message"}} and {@code {"error": "message"}} bodies are also accepted.
+     * A body that is not JSON becomes the message.</p>
+     *
+     * @param status     the HTTP status code
+     * @param body       the raw response body (may be empty)
+     * @param retryAfter seconds to wait before retrying, from the Retry-After header (may be null)
+     * @return a new RenderScreenshotException
+     */
+    static RenderScreenshotException fromResponseBody(int status, String body, Integer retryAfter) {
+        String message = null;
+        String code = null;
+        String type = null;
+        String param = null;
+        String requestId = null;
+        String docs = null;
+
+        Map<?, ?> parsed = null;
+        if (body != null && !body.isEmpty()) {
+            try {
+                Object value = OBJECT_MAPPER.readValue(body, Object.class);
+                if (value instanceof Map) {
+                    parsed = (Map<?, ?>) value;
+                }
+            } catch (Exception ignored) {
+                // Not JSON: the raw body becomes the message below
+            }
+        }
+
+        if (parsed != null) {
+            Object nested = parsed.get("error");
+            Map<?, ?> source = nested instanceof Map ? (Map<?, ?>) nested : parsed;
+            code = stringField(source, "code");
+            message = stringField(source, "message");
+            if (message == null) {
+                message = stringField(parsed, "error");
+            }
+            type = stringField(source, "type");
+            param = stringField(source, "param");
+            docs = stringField(source, "docs");
+            requestId = stringField(parsed, "request_id");
+            if (requestId == null) {
+                requestId = stringField(source, "request_id");
+            }
+        } else if (body != null && !body.isEmpty()) {
+            message = body;
+        }
+
+        if (message == null) {
+            message = "API request failed with status " + status;
+        }
+
+        boolean retryable = status == 429 || status >= 500;
+        return new RenderScreenshotException(message, status, code, retryable, retryAfter,
+                type, param, requestId, docs);
+    }
+
+    private static String stringField(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        return value instanceof String ? (String) value : null;
     }
 }

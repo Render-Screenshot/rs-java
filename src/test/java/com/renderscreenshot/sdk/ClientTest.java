@@ -514,6 +514,65 @@ class ClientTest {
     }
 
     @Test
+    void take_handlesNestedApiErrorBody() {
+        server.enqueue(new MockResponse()
+                .setResponseCode(400)
+                .setBody("{\"error\":{\"type\":\"validation_error\",\"code\":\"invalid_url\","
+                        + "\"message\":\"The URL is not valid\",\"param\":\"url\",\"retryable\":false,"
+                        + "\"docs\":\"https://docs.renderscreenshot.com/errors/invalid_url\"},"
+                        + "\"request_id\":\"req_abc123\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        RenderScreenshotException e = assertThrows(
+                RenderScreenshotException.class,
+                () -> client.take(TakeOptions.url("notaurl")));
+
+        assertEquals(400, e.getHttpStatus());
+        assertEquals("invalid_url", e.getCode());
+        assertEquals("The URL is not valid", e.getMessage());
+        assertEquals("validation_error", e.getType());
+        assertEquals("url", e.getParam());
+        assertEquals("req_abc123", e.getRequestId());
+        assertEquals("https://docs.renderscreenshot.com/errors/invalid_url", e.getDocs());
+        assertFalse(e.isRetryable());
+    }
+
+    @Test
+    void take_handlesNestedRateLimitErrorWithRetryAfter() {
+        server.enqueue(new MockResponse()
+                .setResponseCode(429)
+                .setBody("{\"error\":{\"type\":\"rate_limit_error\",\"code\":\"rate_limited\","
+                        + "\"message\":\"Slow down\",\"retryable\":true},\"request_id\":\"req_1\"}")
+                .addHeader("Retry-After", "30"));
+
+        RenderScreenshotException e = assertThrows(
+                RenderScreenshotException.class,
+                () -> client.take(TakeOptions.url("https://example.com")));
+
+        assertEquals("rate_limited", e.getCode());
+        assertEquals("Slow down", e.getMessage());
+        assertTrue(e.isRetryable());
+        assertEquals(30, e.getRetryAfter());
+    }
+
+    @Test
+    void take_handlesFlatErrorStringBody() {
+        server.enqueue(new MockResponse()
+                .setResponseCode(400)
+                .setBody("{\"error\": \"Bad thing\", \"code\": \"invalid_request\"}"));
+
+        RenderScreenshotException e = assertThrows(
+                RenderScreenshotException.class,
+                () -> client.take(TakeOptions.url("https://example.com")));
+
+        assertEquals("invalid_request", e.getCode());
+        assertEquals("Bad thing", e.getMessage());
+        assertNull(e.getType());
+        assertNull(e.getParam());
+        assertNull(e.getRequestId());
+    }
+
+    @Test
     void take_handles401Error() {
         server.enqueue(new MockResponse()
                 .setResponseCode(401)

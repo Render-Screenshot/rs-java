@@ -200,6 +200,25 @@ class CacheManagerTest {
         assertEquals("Invalid keys", e.getMessage());
     }
 
+    @Test
+    void purge_parsesNestedApiErrorBody() {
+        server.enqueue(new MockResponse()
+                .setResponseCode(400)
+                .setBody("{\"error\":{\"type\":\"validation_error\",\"code\":\"invalid_request\","
+                        + "\"message\":\"keys must be an array\",\"param\":\"keys\"},"
+                        + "\"request_id\":\"req_xyz\"}"));
+
+        RenderScreenshotException e = assertThrows(
+                RenderScreenshotException.class,
+                () -> client.cache.purge(Arrays.asList("invalid")));
+
+        assertEquals(400, e.getHttpStatus());
+        assertEquals("invalid_request", e.getCode());
+        assertEquals("keys must be an array", e.getMessage());
+        assertEquals("keys", e.getParam());
+        assertEquals("req_xyz", e.getRequestId());
+    }
+
     // ========== PurgeResponse Tests ==========
 
     @Test

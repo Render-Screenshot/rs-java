@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   identical cached render inside the cache TTL. Without it every request
   renders a fresh screenshot.
 
+### Fixed
+
+- API errors now read the nested error body
+  (`{"error": {"type", "code", "message", "param", ...}, "request_id"}`).
+  Before, `getCode()` returned `null` and `getMessage()` returned the raw JSON.
+  `RenderScreenshotException` also exposes `getType()`, `getParam()`,
+  `getRequestId()` and `getDocs()`. `CacheManager` errors use the same parser.
+  Flat `{"code", "message"}` / `{"error": "..."}` bodies still work.
+
 ## [2.0.2] - 2026-10-18
 
 ### Fixed

@@ -197,25 +197,7 @@ public class CacheManager {
 
     private RenderScreenshotException handleErrorResponse(Response response) throws IOException {
         String body = response.body() != null ? response.body().string() : "";
-        String message = "API request failed with status " + response.code();
-        String code = null;
         Integer retryAfter = null;
-
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> errorBody = objectMapper.readValue(body, Map.class);
-            if (errorBody.containsKey("message")) {
-                message = (String) errorBody.get("message");
-            }
-            if (errorBody.containsKey("code")) {
-                code = (String) errorBody.get("code");
-            }
-        } catch (Exception ignored) {
-            // Use raw body if not JSON
-            if (!body.isEmpty()) {
-                message = body;
-            }
-        }
 
         String retryAfterHeader = response.header("Retry-After");
         if (retryAfterHeader != null) {
@@ -226,7 +208,7 @@ public class CacheManager {
             }
         }
 
-        return RenderScreenshotException.fromResponse(response.code(), message, code, retryAfter);
+        return RenderScreenshotException.fromResponseBody(response.code(), body, retryAfter);
     }
 
     /**
